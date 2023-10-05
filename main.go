@@ -91,6 +91,28 @@ func (p *platform) draw(imd *imdraw.IMDraw) {
 	imd.Rectangle(0)
 }
 
+type followerCircle struct {
+	pos     pixel.Vec
+	color   pixel.RGBA
+	radius  float64
+	speed   float64
+	reached bool
+}
+
+func (fc *followerCircle) update(playerPos pixel.Vec) {
+	// Calculate the direction vector from the circle to the player
+	direction := playerPos.Sub(fc.pos).Unit()
+
+	// Move the circle towards the player
+	fc.pos = fc.pos.Add(direction.Scaled(fc.speed))
+}
+
+func (fc *followerCircle) draw(imd *imdraw.IMDraw) {
+	imd.Color = fc.color
+	imd.Push(fc.pos)
+	imd.Circle(fc.radius, 0)
+}
+
 type gopherPhys struct {
 	gravity   float64
 	runSpeed  float64
@@ -279,6 +301,26 @@ func run() {
 		platforms[i].color = randomNiceColor()
 	}
 
+	// follower circle object
+	follower := &followerCircle{
+		color:  pixel.RGB(0, 0, 1), // blue
+		radius: 5,                  // radius
+		speed:  0.25,               // speed
+		pos:    pixel.V(100, 100),  // initial position
+	}
+	follower2 := &followerCircle{
+		color:  pixel.RGB(1, 0, 0), // red
+		radius: 5,                  // radius
+		speed:  0.25,               // speed
+		pos:    pixel.V(-100, 100), // initial position
+	}
+	follower3 := &followerCircle{
+		color:  pixel.RGB(0, 1, 0), // green
+		radius: 5,                  // radius
+		speed:  0.25,               // speed
+		pos:    pixel.V(0, -100),   // initial position
+	}
+
 	canvas := pixelgl.NewCanvas(pixel.R(-160/2, -120/2, 160/2, 120/2))
 	imd := imdraw.New(sheet)
 	imd.Precision = 32
@@ -290,18 +332,21 @@ func run() {
 		dt := time.Since(last).Seconds()
 		last = time.Now()
 
-		// lerp the camera position towards the gopher
+		// lerp the camera position towards gopher
 		camPos = pixel.Lerp(camPos, phys.rect.Center(), 1-math.Pow(1.0/128, dt))
 		cam := pixel.IM.Moved(camPos.Scaled(-1))
 		canvas.SetMatrix(cam)
 
-		// restart the level on pressing enter
+		// restart pressing enter
 		if win.JustPressed(pixelgl.KeyEnter) {
 			phys.rect = phys.rect.Moved(phys.rect.Center().Scaled(-1))
 			phys.vel = pixel.ZV
+			follower.pos = pixel.V(100, 100)
+			follower2.pos = pixel.V(-100, 100)
+			follower3.pos = pixel.V(-100, 100)
 		}
 
-		// control the gopher with keys
+		// gopher inputs
 		ctrl := pixel.ZV
 		if win.Pressed(pixelgl.KeyLeft) {
 			ctrl.X--
@@ -313,20 +358,37 @@ func run() {
 			ctrl.Y = 1
 		}
 
-		// update the physics and animation
+		follower.update(phys.rect.Center())
+		follower2.update(phys.rect.Center())
+		follower3.update(phys.rect.Center())
+
+		if phys.rect.Center().Sub(follower.pos).Len() < phys.rect.W()/2+follower.radius ||
+			phys.rect.Center().Sub(follower2.pos).Len() < phys.rect.W()/2+follower2.radius ||
+			phys.rect.Center().Sub(follower3.pos).Len() < phys.rect.W()/2+follower3.radius {
+			phys.rect = phys.rect.Moved(phys.rect.Center().Scaled(-1))
+			phys.vel = pixel.ZV
+			follower.pos = pixel.V(100, 100)
+			follower2.pos = pixel.V(-100, 100)
+			follower3.pos = pixel.V(0, -100)
+		}
+
+		// update physics and animation
 		phys.update(dt, ctrl, platforms)
 		anim.update(dt, phys)
 
-		// draw the scene to the canvas using IMDraw
+		// draw the scene to the canvas
 		canvas.Clear(colornames.Black)
 		imd.Clear()
 		for _, p := range platforms {
 			p.draw(imd)
 		}
 		anim.draw(imd, phys)
+		follower.draw(imd)
+		follower2.draw(imd)
+		follower3.draw(imd)
 		imd.Draw(canvas)
 
-		// stretch the canvas to the window
+		// stretch canvas to the window
 		win.Clear(colornames.White)
 		win.SetMatrix(pixel.IM.Scaled(pixel.ZV,
 			math.Min(
