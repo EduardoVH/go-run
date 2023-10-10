@@ -29,7 +29,7 @@ var audioStream beep.StreamSeekCloser
 // Initialize audio playback
 func initAudio() {
 	// Open the audio file (you need to replace "music.mp3" with your audio file)
-	audioFile, err := os.Open("music.mp3")
+	audioFile, err := os.Open("D:/coding/Go/go-run/music/music.mp3")
 	if err != nil {
 		panic(err)
 	}
@@ -312,7 +312,7 @@ again:
 func run() {
 	rand.Seed(time.Now().UnixNano())
 
-	sheet, anims, err := loadAnimationSheet("sheet.png", "sheet.csv", 12)
+	sheet, anims, err := loadAnimationSheet("D:/coding/Go/go-run/art/sheet.png", "D:/coding/Go/go-run/art/sheet.csv", 12)
 	if err != nil {
 		panic(err)
 	}
@@ -327,7 +327,7 @@ func run() {
 		panic(err)
 	}
 
-	initAudio()
+	go initAudio()
 
 	phys := &gopherPhys{
 		gravity:   -512,
@@ -357,19 +357,19 @@ func run() {
 	follower := &followerCircle{
 		color:  pixel.RGB(0, 0, 1), // Blue color
 		radius: 5,                  // Set the radius as you prefer
-		speed:  0.25,               // Set the speed as you prefer
+		speed:  0.5,                // Set the speed as you prefer
 		pos:    pixel.V(100, 100),  // Set the initial position (change these values as needed)
 	}
 	follower2 := &followerCircle{
 		color:  pixel.RGB(1, 0, 0), // Red color
 		radius: 5,                  // Set the radius as you prefer
-		speed:  0.25,               // Set the speed as you prefer
+		speed:  0.5,                // Set the speed as you prefer
 		pos:    pixel.V(-100, 100), // Set the initial position (change these values as needed)
 	}
 	follower3 := &followerCircle{
 		color:  pixel.RGB(0, 1, 0), // Green color
 		radius: 5,                  // Set the radius as you prefer
-		speed:  0.25,               // Set the speed as you prefer
+		speed:  0.5,                // Set the speed as you prefer
 		pos:    pixel.V(0, -100),   // Set the initial position (change these values as needed)
 	}
 
@@ -411,9 +411,9 @@ func run() {
 		}
 
 		// Update the follower circle's position to follow the player and avoid collisions
-		follower.update(phys.rect.Center(), []*followerCircle{follower2, follower3})
-		follower2.update(phys.rect.Center(), []*followerCircle{follower, follower3})
-		follower3.update(phys.rect.Center(), []*followerCircle{follower, follower2})
+		go follower.update(phys.rect.Center(), []*followerCircle{follower2, follower3})
+		go follower2.update(phys.rect.Center(), []*followerCircle{follower, follower3})
+		go follower3.update(phys.rect.Center(), []*followerCircle{follower, follower2})
 
 		// Check for collision between the player and the follower circle
 		if phys.rect.Center().Sub(follower.pos).Len() < phys.rect.W()/2+follower.radius ||
@@ -429,8 +429,8 @@ func run() {
 		}
 
 		// update the physics and animation
-		phys.update(dt, ctrl, platforms)
-		anim.update(dt, phys)
+		go phys.update(dt, ctrl, platforms)
+		go anim.update(dt, phys)
 
 		// draw the scene to the canvas using IMDraw
 		canvas.Clear(colornames.Black)
