@@ -91,6 +91,12 @@ func (p *platform) draw(imd *imdraw.IMDraw) {
 	imd.Rectangle(0)
 }
 
+// Create a function to check if two circles are colliding
+func areCirclesColliding(c1, c2 *followerCircle) bool {
+	distance := c1.pos.Sub(c2.pos).Len()
+	return distance < c1.radius+c2.radius
+}
+
 type followerCircle struct {
 	pos     pixel.Vec
 	color   pixel.RGBA
@@ -99,12 +105,20 @@ type followerCircle struct {
 	reached bool
 }
 
-func (fc *followerCircle) update(playerPos pixel.Vec) {
+func (fc *followerCircle) update(playerPos pixel.Vec, circles []*followerCircle) {
 	// Calculate the direction vector from the circle to the player
 	direction := playerPos.Sub(fc.pos).Unit()
 
 	// Move the circle towards the player
 	fc.pos = fc.pos.Add(direction.Scaled(fc.speed))
+
+	// Check for collisions with other circles
+	for _, circle := range circles {
+		if circle != fc && areCirclesColliding(fc, circle) {
+			// Handle collision by reversing direction
+			fc.pos = fc.pos.Sub(direction.Scaled(fc.speed))
+		}
+	}
 }
 
 func (fc *followerCircle) draw(imd *imdraw.IMDraw) {
@@ -301,24 +315,24 @@ func run() {
 		platforms[i].color = randomNiceColor()
 	}
 
-	// follower circle object
+	// Create a follower circle object
 	follower := &followerCircle{
-		color:  pixel.RGB(0, 0, 1), // blue
-		radius: 5,                  // radius
-		speed:  0.25,               // speed
-		pos:    pixel.V(100, 100),  // initial position
+		color:  pixel.RGB(0, 0, 1), // Blue color
+		radius: 5,                  // Set the radius as you prefer
+		speed:  0.25,               // Set the speed as you prefer
+		pos:    pixel.V(100, 100),  // Set the initial position (change these values as needed)
 	}
 	follower2 := &followerCircle{
-		color:  pixel.RGB(1, 0, 0), // red
-		radius: 5,                  // radius
-		speed:  0.25,               // speed
-		pos:    pixel.V(-100, 100), // initial position
+		color:  pixel.RGB(1, 0, 0), // Red color
+		radius: 5,                  // Set the radius as you prefer
+		speed:  0.25,               // Set the speed as you prefer
+		pos:    pixel.V(-100, 100), // Set the initial position (change these values as needed)
 	}
 	follower3 := &followerCircle{
-		color:  pixel.RGB(0, 1, 0), // green
-		radius: 5,                  // radius
-		speed:  0.25,               // speed
-		pos:    pixel.V(0, -100),   // initial position
+		color:  pixel.RGB(0, 1, 0), // Green color
+		radius: 5,                  // Set the radius as you prefer
+		speed:  0.25,               // Set the speed as you prefer
+		pos:    pixel.V(0, -100),   // Set the initial position (change these values as needed)
 	}
 
 	canvas := pixelgl.NewCanvas(pixel.R(-160/2, -120/2, 160/2, 120/2))
@@ -332,12 +346,12 @@ func run() {
 		dt := time.Since(last).Seconds()
 		last = time.Now()
 
-		// lerp the camera position towards gopher
+		// lerp the camera position towards the gopher
 		camPos = pixel.Lerp(camPos, phys.rect.Center(), 1-math.Pow(1.0/128, dt))
 		cam := pixel.IM.Moved(camPos.Scaled(-1))
 		canvas.SetMatrix(cam)
 
-		// restart pressing enter
+		// restart the level on pressing enter
 		if win.JustPressed(pixelgl.KeyEnter) {
 			phys.rect = phys.rect.Moved(phys.rect.Center().Scaled(-1))
 			phys.vel = pixel.ZV
@@ -346,7 +360,7 @@ func run() {
 			follower3.pos = pixel.V(-100, 100)
 		}
 
-		// gopher inputs
+		// control the gopher with keys
 		ctrl := pixel.ZV
 		if win.Pressed(pixelgl.KeyLeft) {
 			ctrl.X--
@@ -358,13 +372,17 @@ func run() {
 			ctrl.Y = 1
 		}
 
-		follower.update(phys.rect.Center())
-		follower2.update(phys.rect.Center())
-		follower3.update(phys.rect.Center())
+		// Update the follower circle's position to follow the player and avoid collisions
+		follower.update(phys.rect.Center(), []*followerCircle{follower2, follower3})
+		follower2.update(phys.rect.Center(), []*followerCircle{follower, follower3})
+		follower3.update(phys.rect.Center(), []*followerCircle{follower, follower2})
 
+		// Check for collision between the player and the follower circle
 		if phys.rect.Center().Sub(follower.pos).Len() < phys.rect.W()/2+follower.radius ||
 			phys.rect.Center().Sub(follower2.pos).Len() < phys.rect.W()/2+follower2.radius ||
 			phys.rect.Center().Sub(follower3.pos).Len() < phys.rect.W()/2+follower3.radius {
+
+			// Reset the player's position and velocity
 			phys.rect = phys.rect.Moved(phys.rect.Center().Scaled(-1))
 			phys.vel = pixel.ZV
 			follower.pos = pixel.V(100, 100)
@@ -372,23 +390,25 @@ func run() {
 			follower3.pos = pixel.V(0, -100)
 		}
 
-		// update physics and animation
+		// update the physics and animation
 		phys.update(dt, ctrl, platforms)
 		anim.update(dt, phys)
 
-		// draw the scene to the canvas
+		// draw the scene to the canvas using IMDraw
 		canvas.Clear(colornames.Black)
 		imd.Clear()
 		for _, p := range platforms {
 			p.draw(imd)
 		}
 		anim.draw(imd, phys)
+		// Draw the follower circle
 		follower.draw(imd)
 		follower2.draw(imd)
 		follower3.draw(imd)
+
 		imd.Draw(canvas)
 
-		// stretch canvas to the window
+		// stretch the canvas to the window
 		win.Clear(colornames.White)
 		win.SetMatrix(pixel.IM.Scaled(pixel.ZV,
 			math.Min(
