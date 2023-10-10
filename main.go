@@ -29,7 +29,7 @@ var audioStream beep.StreamSeekCloser
 // Initialize audio playback
 func initAudio() {
 	// Open the audio file (you need to replace "music.mp3" with your audio file)
-	audioFile, err := os.Open("D:/coding/Go/go-run/music/music.mp3")
+	audioFile, err := os.Open("D:/coding/Go/pixel-examples-master/go run/music/music.mp3")
 	if err != nil {
 		panic(err)
 	}
@@ -312,7 +312,7 @@ again:
 func run() {
 	rand.Seed(time.Now().UnixNano())
 
-	sheet, anims, err := loadAnimationSheet("D:/coding/Go/go-run/art/sheet.png", "D:/coding/Go/go-run/art/sheet.csv", 12)
+	sheet, anims, err := loadAnimationSheet("D:/coding/Go/pixel-examples-master/go run/art/sheet.png", "D:/coding/Go/pixel-examples-master/go run/art/sheet.csv", 12)
 	if err != nil {
 		panic(err)
 	}
@@ -395,7 +395,7 @@ func run() {
 			phys.vel = pixel.ZV
 			follower.pos = pixel.V(100, 100)
 			follower2.pos = pixel.V(-100, 100)
-			follower3.pos = pixel.V(-100, 100)
+			follower3.pos = pixel.V(0, -100)
 		}
 
 		// control the gopher with keys
