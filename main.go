@@ -2,6 +2,9 @@ package main
 
 import (
 	"encoding/csv"
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
 	"image"
 	"image/color"
 	"io"
@@ -19,6 +22,39 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/image/colornames"
 )
+
+// Add a variable for the audio stream
+var audioStream beep.StreamSeekCloser
+
+// Initialize audio playback
+func initAudio() {
+	// Open the audio file (you need to replace "music.mp3" with your audio file)
+	audioFile, err := os.Open("music.mp3")
+	if err != nil {
+		panic(err)
+	}
+
+	// Decode the audio file
+	audioStream, format, err := mp3.Decode(audioFile)
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize the speaker
+	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	if err != nil {
+		panic(err)
+	}
+
+	// Play the audio in a separate goroutine
+	go func() {
+		done := make(chan bool)
+		speaker.Play(beep.Seq(audioStream, beep.Callback(func() {
+			done <- true
+		})))
+		<-done
+	}()
+}
 
 func loadAnimationSheet(sheetPath, descPath string, frameWidth float64) (sheet pixel.Picture, anims map[string][]pixel.Rect, err error) {
 	// total hack, nicely format the error at the end, so I don't have to type it every time
@@ -290,6 +326,8 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
+
+	initAudio()
 
 	phys := &gopherPhys{
 		gravity:   -512,
